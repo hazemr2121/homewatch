@@ -1,0 +1,15 @@
+.env
+media/
+
+# Frigate runtime files
+frigate/*.db
+frigate/*.db-*
+frigate/model_cache/
+frigate/backup.db*
+frigate/.timeline
+frigate/.jwt_secret
+frigate/go2rtc_homekit.yml
+
+# Node
+node_modules/
+dist/

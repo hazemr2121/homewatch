@@ -1,0 +1,48 @@
+services:
+  frigate:
+    image: ghcr.io/blakeblackshear/frigate:stable
+    container_name: frigate
+    restart: unless-stopped
+    shm_size: "256mb"
+    environment:
+      TZ: ${TZ:-Africa/Cairo}
+      FRIGATE_CAMERA_IP: ${FRIGATE_CAMERA_IP}
+      FRIGATE_RTSP_USER: ${FRIGATE_RTSP_USER}
+      FRIGATE_RTSP_PASSWORD: ${FRIGATE_RTSP_PASSWORD}
+    volumes:
+      - ./frigate:/config
+      - ${MEDIA_PATH:-./media}:/media/frigate
+      - type: tmpfs
+        target: /tmp/cache
+        tmpfs:
+          size: 1000000000
+    ports:
+      - "8971:8971" # Web UI (authenticated) - reach it over LAN or Tailscale only
+    depends_on:
+      - mosquitto
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: unless-stopped
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    # No ports published: the broker is only reachable inside the compose network.
+
+  notifier:
+    build: ./notifier
+    container_name: notifier
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Africa/Cairo}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      ALERT_LABELS: ${ALERT_LABELS:-person}
+      ALERT_MIN_SCORE: ${ALERT_MIN_SCORE:-0.7}
+      ALERT_COOLDOWN_SECONDS: ${ALERT_COOLDOWN_SECONDS:-120}
+      ENABLE_COMMANDS: ${ENABLE_COMMANDS:-true}
+      MQTT_URL: mqtt://mosquitto:1883
+      FRIGATE_URL: http://frigate:5000
+    depends_on:
+      - frigate
+      - mosquitto
